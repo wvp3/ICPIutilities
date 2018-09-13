@@ -16,16 +16,36 @@
 rename_official <- function(df) {
 
   #check that mechanism exists in MSD before starting (OUxIM or PSNUxIM, not PSNU)
-  if(("mechanismid" %in% names(df) == FALSE && "MechanismID" %in% names(df) == FALSE)) {
-    stop('This dataset does not have mechanisms. Make sure it is OUxIM or PSNUxIM')
-  }
+    if(("mechanismid" %in% names(df) == FALSE && "MechanismID" %in% names(df) == FALSE)) {
+      stop('This dataset does not have mechanisms. Make sure it is OUxIM or PSNUxIM')
+    }
+
+
+# TEST SECTION ------------------------------------------------------------
+
+  sql_url <- "https://www.datim.org/api/sqlViews/fgUtV6e9YIX/data.csv"
+
+  #check if there is an internet connection
+    if (!is.character(RCurl::getURL(sql_url))) {
+      print("No connection")
+      break
+    }
+
+  #test DATIM connection
+    r <- httr::GET(sql_url,httr::timeout(60))
+    if (r$status != 200L ){
+      print("No connection")
+      break
+    }
+
+# END TEST SECTION
 
   #store column names (to work for both lower case and camel case) & then covert to lowercase
     headers_orig <- names(df)
     df <- dplyr::rename_all(df, ~ tolower(.))
 
   #access current mechanism list posted publically to DATIM
-    mech_official <- readr::read_csv("https://www.datim.org/api/sqlViews/fgUtV6e9YIX/data.csv",
+    mech_official <- readr::read_csv(sql_url,
                                      col_types = readr::cols(.default = "c"))
 
   #rename variables to match MSD and remove mechid from mech name
