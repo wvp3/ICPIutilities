@@ -15,7 +15,7 @@ Trying to setup the `ICPIutilities::rename_official()` so that in the event of n
 
 ## SETUP
 
-This RMD presuposes you are working in the ICPIutilities Rproj.
+This RMD presuposes you are working in the ICPIutilities Rproj under the [test_connection branch](https://github.com/ICPI/ICPIutilities/blob/test_connection/R/rename_official.R).
 
 ```{r setup}
 library(devtools)
