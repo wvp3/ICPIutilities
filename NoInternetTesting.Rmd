@@ -1,0 +1,72 @@
+---
+title: "Testing No Connection"
+author: "AHC"
+date: "September 13, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+
+Trying to setup the `ICPIutilities::rename_official()` so that in the event of no internet connection or no connection to DATIM, code that contains this function will still run and essentially skip over this function.
+
+## SETUP
+
+This RMD presuposes you are working in the ICPIutilities Rproj.
+
+```{r setup}
+library(devtools)
+library(magrittr)
+load_all()
+```
+
+## Generate a testing dataframe
+
+Want to have a dataframe to test the function out on.
+
+```{r pressure}
+#Masked training dataset
+dataset_url <- "https://raw.githubusercontent.com/ICPI/TrainingDataset/master/Output/MER_Structured_TRAINING_Dataset_PSNU_IM_FY17-18_20180815_v1_1.txt"
+
+#read in and then filter to a small subset
+df <- ICPIutilities::read_msd(dataset_url, save_rds = FALSE) %>% 
+  dplyr::filter(operatingunit == "Westeros", indicator == "TX_NEW", standardizeddisaggregate == "Total Numerator") %>% 
+  dplyr::group_by(operatingunit, psnu, primepartner, mechanismid, implementingmechanismname, indicator) %>% 
+  dplyr::summarise_at(dplyr::vars(dplyr::starts_with("fy2018")), ~ sum(., na.rm = TRUE)) %>% 
+  dplyr::ungroup()
+```
+
+## Test function
+Here we have a test function that contains the `rename_official()` within it.
+
+```{r cleanup}
+  cleanup <- function(df){
+    
+    #clean up mech/parnter names
+    df_clean <- ICPIutilities::rename_official(df)
+    #create a cumulative variable
+    df_cum <- dplyr::mutate(df_clean, fy2018cum = fy2018q1 + fy2018q2 + fy2018q3)
+    #remove quarters
+    df_cum <- dplyr::select(df_cum, -c(fy2018q1:fy2018q3))
+    
+    return(df_cum)
+  }
+```
+
+## Test time
+We can run the function and it will replace `primeparnter` and `implementingmechanismname` with the placeholder mechanisms that match from FACTSInfo (stored in a public SQL View on DATIM) and then adds a cumulative value when run with an internet connection.
+
+```{r testing}
+cleanup(df)
+```
+
+That should have worked just fine if there is an connection. The code below was added to `rename_official()` to "insulate" it, so that if connection failed, the rest of the code wouldn't stop and a dataframe with a cumlative value would still be returned (the names would just be the same).
+
+https://github.com/ICPI/ICPIutilities/blob/88cbf91aa4da495a4153ca5e9e33eb5a51e196aa/R/rename_official.R#L24-L40
+
+However, if you cut your internet connection and try to rerun the code, you will get an error message ("Could not resolve host: www.datim.org") that stops the `cleanup()` function from finishing.
+
+How can I adjust the code in `rename_official()` to be skipped without breaking the whole script?
